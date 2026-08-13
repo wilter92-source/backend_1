@@ -1,0 +1,24 @@
+{
+  "name": "backend-turnos-reservas",
+  "version": "1.0.0",
+  "description": "Administrador de servicios para un sistema de turnos y reservas con Node.js y ESM.",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "keywords": [
+    "node",
+    "backend",
+    "esm",
+    "turnos",
+    "reservas",
+    "servicios"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}
