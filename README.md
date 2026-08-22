@@ -230,3 +230,17 @@ y comprobar que ni `.env` ni `node_modules` estén incluidos.
 - [ ] Crear un repositorio público en GitHub.
 - [ ] Subir el proyecto.
 - [ ] Entregar el enlace público del repositorio.
+
+
+## Pre-entrega 02 - API REST con Express
+
+La aplicación fue migrada a Express con rutas REST para servicios.
+
+Endpoints disponibles:
+- GET /api/services
+- GET /api/services/:sid
+- POST /api/services
+- PUT /api/services/:sid
+- DELETE /api/services/:sid
+
+Incluye filtros por query params: category y available.
