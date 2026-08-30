@@ -1,246 +1,229 @@
-# Administrador de Servicios para Sistema de Turnos y Reservas
+# Backend de Turnos y Reservas
 
-Proyecto de pre-entrega desarrollado con **Node.js** y **ECMAScript Modules (ESM)**. Su objetivo es crear la base inicial de un sistema de turnos y reservas mediante una clase `ServiceManager` capaz de crear, consultar, actualizar y eliminar servicios.
+Proyecto desarrollado como parte de la pre-entrega del módulo 3 de Backend.
 
-## Funcionalidades incluidas
+La aplicación consiste en una API REST para gestionar servicios y reservas utilizando Node.js, Express y persistencia de datos mediante archivos JSON.
 
-- Node.js con sintaxis ESM (`import` / `export`).
-- `dotenv` para variables de entorno.
-- Validación *fail-fast* de `PORT` y `NODE_ENV`.
-- Persistencia en `src/data/services.json`.
-- CRUD completo de servicios mediante `ServiceManager`.
-- Generación automática del `id`.
-- Protección del `id` en actualizaciones.
-- Validación de campos obligatorios.
-- `.gitignore` preparado para excluir `.env` y `node_modules`.
+## Tecnologías utilizadas
 
-## Estructura
+- Node.js
+- Express
+- JavaScript con ES Modules
+- FileSystem (`fs.promises`)
+- dotenv
 
-```text
-backend-turnos-reservas/
-├── src/
-│   ├── config/
-│   │   └── env.config.js
-│   ├── managers/
-│   │   └── ServiceManager.js
-│   ├── data/
-│   │   └── services.json
-│   └── app.js
-├── .env.example
-├── .gitignore
-├── package.json
-└── README.md
-```
+---
 
 ## Instalación
 
-1. Abrir la carpeta del proyecto en Visual Studio Code.
-2. Abrir la terminal integrada.
-3. Ejecutar:
+Clonar el repositorio y ejecutar:
 
 ```bash
 npm install
 ```
 
-4. Crear un archivo llamado `.env` en la raíz del proyecto tomando `.env.example` como referencia.
+Luego crear un archivo `.env` en la raíz del proyecto utilizando como referencia el archivo `.env.example`.
 
-Contenido local requerido:
+Ejemplo:
 
 ```env
 PORT=8080
 NODE_ENV=development
 ```
 
-**Importante:** `.env` es local y NO debe subirse a GitHub.
+> El archivo `.env` contiene variables locales y no debe subirse al repositorio.
+
+---
 
 ## Ejecución
+
+Para iniciar el servidor:
 
 ```bash
 npm start
 ```
 
-También se puede usar:
+El servidor se ejecutará en el puerto configurado en las variables de entorno.
 
-```bash
-npm run dev
+Ejemplo:
+
+```
+Servidor iniciado correctamente.
+Puerto: 8080
 ```
 
-Una ejecución correcta mostrará algo similar a:
+---
 
-```text
-Aplicación inicializada correctamente.
-Entorno: development
-Puerto configurado: 8080
-Servicios registrados: 0
+# Estructura del proyecto
+
+```
+backend-turnos-reservas/
+
+├── src/
+│   ├── config/
+│   │   └── env.config.js
+│   │
+│   ├── data/
+│   │   ├── services.json
+│   │   └── bookings.json
+│   │
+│   ├── managers/
+│   │   ├── ServiceManager.js
+│   │   └── BookingManager.js
+│   │
+│   ├── routes/
+│   │   ├── services.router.js
+│   │   └── bookings.router.js
+│   │
+│   ├── app.js
+│   └── server.js
+│
+├── .env.example
+├── .gitignore
+├── package.json
+└── README.md
 ```
 
-## Variables de entorno
+---
 
-| Variable | Requerida | Ejemplo local | Descripción |
-|---|---|---|---|
-| `PORT` | Sí | `8080` | Puerto configurado para la aplicación. |
-| `NODE_ENV` | Sí | `development` | Entorno de ejecución. |
+# Persistencia
 
-`src/config/env.config.js` carga las variables con `dotenv`. Si falta `PORT` o `NODE_ENV`, la aplicación falla al iniciar con un mensaje claro.
+Los datos se almacenan utilizando archivos JSON:
 
-## Recurso `services`
+```
+src/data/services.json
+src/data/bookings.json
+```
 
-Cada servicio utiliza esta estructura:
+La aplicación utiliza `fs.promises` para leer y escribir los archivos de forma asíncrona.
 
-```js
+---
+
+# Recurso Services
+
+Cada servicio contiene:
+
+```json
 {
-  id,
-  name,
-  description,
-  duration,
-  price,
-  category,
-  available
+  "id": 1,
+  "name": "Consulta médica",
+  "description": "Consulta general",
+  "duration": 30,
+  "price": 25,
+  "category": "salud",
+  "available": true
 }
 ```
 
-El campo `id` es generado automáticamente. Los campos obligatorios al crear un servicio son:
+El campo `id` se genera automáticamente.
 
-- `name`
-- `description`
-- `duration`
-- `price`
-- `category`
-- `available`
+## Endpoints disponibles
 
-## Métodos de `ServiceManager`
+### Obtener todos los servicios
 
-### `getServices()`
-
-Devuelve todos los servicios guardados.
-
-```js
-const services = await serviceManager.getServices();
+```
+GET /api/services
 ```
 
-### `getServiceById(id)`
+### Obtener servicio por ID
 
-Devuelve el servicio correspondiente al ID o `null` si no existe.
-
-```js
-const service = await serviceManager.getServiceById(1);
+```
+GET /api/services/:sid
 ```
 
-### `addService(serviceData)`
+### Crear servicio
 
-Agrega un servicio. El ID se genera internamente.
-
-```js
-const newService = await serviceManager.addService({
-  name: 'Consulta general',
-  description: 'Consulta inicial de 30 minutos',
-  duration: 30,
-  price: 25,
-  category: 'salud',
-  available: true
-});
+```
+POST /api/services
 ```
 
-Si falta cualquiera de los campos obligatorios, el método lanza un error descriptivo.
-
-Aunque se envíe accidentalmente una propiedad `id`, `addService()` no la utiliza: siempre genera el identificador internamente.
-
-### `updateService(id, updatedData)`
-
-Actualiza solamente los campos enviados.
-
-```js
-const updatedService = await serviceManager.updateService(1, {
-  price: 30,
-  available: false
-});
-```
-
-El `id` no puede modificarse. Cualquier `id` incluido dentro de `updatedData` es ignorado de forma deliberada.
-
-Si el servicio no existe, devuelve `null`.
-
-### `deleteService(id)`
-
-Elimina un servicio por ID.
-
-```js
-const deletedService = await serviceManager.deleteService(1);
-```
-
-Si el servicio no existe, devuelve `null`.
-
-## Persistencia
-
-Los servicios se almacenan en:
-
-```text
-src/data/services.json
-```
-
-El archivo inicia como:
+Ejemplo:
 
 ```json
-[]
+{
+  "name": "Consulta médica",
+  "description": "Consulta general",
+  "duration": 30,
+  "price": 25,
+  "category": "salud",
+  "available": true
+}
 ```
 
-El manager utiliza las operaciones asíncronas de `fs` para leer y escribir el archivo.
+### Actualizar servicio
 
-## Validaciones implementadas
-
-- Se rechazan servicios incompletos.
-- `available: false` es válido.
-- El ID se genera automáticamente.
-- El ID no puede modificarse en `updateService()`.
-- Buscar, actualizar o eliminar un ID inexistente devuelve `null`.
-- `services.json` debe contener un array JSON.
-- Si el archivo no existe, el manager puede crearlo con `[]`.
-- Se manejan errores de lectura y escritura.
-- `PORT` y `NODE_ENV` son obligatorias.
-- `PORT` se transforma y valida como número.
-
-## Archivos que NO deben subirse
-
-El `.gitignore` excluye:
-
-```text
-node_modules/
-.env
+```
+PUT /api/services/:sid
 ```
 
-Antes de entregar, ejecutar:
+### Eliminar servicio
 
-```bash
-git status
+```
+DELETE /api/services/:sid
 ```
 
-y comprobar que ni `.env` ni `node_modules` estén incluidos.
+---
 
-## Checklist final
+# Recurso Bookings
 
-- [ ] Ejecutar `npm install`.
-- [ ] Crear `.env` con `PORT=8080` y `NODE_ENV=development`.
-- [ ] Ejecutar `npm start`.
-- [ ] Confirmar que la aplicación inicia sin errores.
-- [ ] Confirmar `"type": "module"` en `package.json`.
-- [ ] Confirmar que `.env.example` existe y tiene variables sin valores.
-- [ ] Confirmar que `.env` no está en Git.
-- [ ] Confirmar que `node_modules` no está en Git.
-- [ ] Confirmar que `src/data/services.json` es JSON válido.
-- [ ] Crear un repositorio público en GitHub.
-- [ ] Subir el proyecto.
-- [ ] Entregar el enlace público del repositorio.
+Las reservas contienen:
 
+```json
+{
+  "id": 1,
+  "clientName": "Juan Pérez",
+  "clientEmail": "juan@email.com",
+  "date": "2026-09-01",
+  "time": "10:00",
+  "status": "pending",
+  "services": [
+    {
+      "service": 1,
+      "quantity": 1
+    }
+  ]
+}
+```
 
-## Pre-entrega 02 - API REST con Express
+Las reservas guardan únicamente el ID del servicio y la cantidad solicitada.
 
-La aplicación fue migrada a Express con rutas REST para servicios.
+## Endpoints disponibles
 
-Endpoints disponibles:
-- GET /api/services
-- GET /api/services/:sid
-- POST /api/services
-- PUT /api/services/:sid
-- DELETE /api/services/:sid
+### Crear reserva
 
-Incluye filtros por query params: category y available.
+```
+POST /api/bookings
+```
+
+### Obtener reserva por ID
+
+```
+GET /api/bookings/:bid
+```
+
+### Agregar servicio a una reserva
+
+```
+POST /api/bookings/:bid/services/:sid
+```
+
+Si un servicio ya existe dentro de la reserva, aumenta el valor de `quantity`.
+
+---
+
+# Variables de entorno
+
+Variables utilizadas:
+
+| Variable | Descripción |
+|---|---|
+| PORT | Puerto donde inicia el servidor |
+| NODE_ENV | Ambiente de ejecución |
+
+---
+
+# Notas
+
+- Los archivos JSON permiten mantener la información después de reiniciar el servidor.
+- La carpeta `node_modules` y el archivo `.env` están excluidos mediante `.gitignore`.
+- El proyecto utiliza módulos ES (`import` / `export`).
