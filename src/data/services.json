@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": 1,
+    "name": "Consulta médica general",
+    "description": "Consulta médica preventiva",
+    "duration": 30,
+    "price": 25,
+    "category": "salud",
+    "available": true
+  }
+]
