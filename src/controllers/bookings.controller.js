@@ -1,12 +1,8 @@
-import BookingManager from '../managers/BookingManager.js';
-import ServiceManager from '../managers/ServiceManager.js';
-
-const bookingManager = new BookingManager();
-const serviceManager = new ServiceManager();
+import * as bookingService from '../services/bookings.service.js';
 
 export const createBooking = async (req, res) => {
   try {
-    const booking = await bookingManager.createBooking(req.body);
+    const booking = await bookingService.createBooking(req.body);
     res.status(201).json({ status: 'success', payload: booking });
   } catch (error) {
     res.status(400).json({ status: 'error', message: error.message });
@@ -15,7 +11,7 @@ export const createBooking = async (req, res) => {
 
 export const getBookingById = async (req, res) => {
   try {
-    const booking = await bookingManager.getBookingById(req.params.bid);
+    const booking = await bookingService.getBookingById(req.params.bid);
 
     if (!booking) {
       return res.status(404).json({ status: 'error', message: 'Reserva no encontrada' });
@@ -29,10 +25,9 @@ export const getBookingById = async (req, res) => {
 
 export const addServiceToBooking = async (req, res) => {
   try {
-    const booking = await bookingManager.addServiceToBooking(
+    const booking = await bookingService.addServiceToBooking(
       req.params.bid,
-      req.params.sid,
-      serviceManager
+      req.params.sid
     );
 
     if (!booking) {

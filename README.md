@@ -1,116 +1,184 @@
-# Backend de Turnos y Reservas
+# Backend de Turnos y Reservas - Pre-entrega 5
 
-## Descripción del proyecto
+Es una API para crear servicios y armar reservas. Está hecha con Node.js,
+Express y JavaScript con módulos ES. Los datos se guardan en archivos JSON.
 
-Este proyecto consiste en una API REST para gestionar servicios y
-reservas.
+En esta entrega separé lo que estaba en los managers en tres capas:
+services, repositories y DAO. Las rutas de la API siguen siendo las mismas.
 
-Durante esta etapa del desarrollo se reorganizó la estructura del
-backend separando las responsabilidades entre routes, controllers y
-managers, con el objetivo de mantener el código más ordenado y facilitar
-futuras modificaciones.
+## Cómo iniciarlo
 
-La aplicación utiliza Node.js y Express, trabajando con persistencia de
-datos mediante archivos JSON.
+Usar Node.js 20 o superior. Desde la carpeta donde está `package.json`:
 
-## Tecnologías utilizadas
-
--   Node.js
--   Express
--   JavaScript con ES Modules
--   File System (`fs.promises`)
--   dotenv
-
-## Instalación
-
-``` bash
-npm install
+```bash
+npm ci
 ```
 
-Crear un archivo `.env` usando como referencia `.env.example`.
+Crear un archivo `.env` copiando `.env.example`. Debe quedar así:
 
-Ejemplo:
-
-``` env
+```env
 PORT=8080
 NODE_ENV=development
 ```
 
-## Ejecución
+Después ejecutar:
 
-``` bash
+```bash
 npm start
 ```
 
-La API se ejecuta utilizando el puerto configurado en las variables de
-entorno.
+La dirección es `http://localhost:8080`. Si cambio PORT, también tengo que
+cambiar el puerto en Postman. Para trabajar con reinicio automático puedo
+usar `npm run dev`.
 
-## Organización de la API
+## Cómo organicé las capas
 
-La aplicación está separada en capas:
+El recorrido es: router → controller → service → repository → DAO → archivo JSON.
 
--   Routes: definen los endpoints y conectan las peticiones con los
-    controllers.
--   Controllers: manejan la petición HTTP y la comunicación con los
-    managers.
--   Managers: contienen la lógica de lectura y escritura de los archivos
-    JSON.
+- `src/routes/`: define las URLs y llama a los controllers.
+- `src/controllers/`: recibe los datos de la petición y devuelve la respuesta HTTP.
+- `src/services/`: valida los datos y contiene las reglas de servicios y reservas.
+- `src/repositories/`: pasa las operaciones al DAO, sin reglas de negocio.
+- `src/dao/`: lee y escribe los JSON. `json.dao.js` reúne las operaciones de archivos que comparten los dos recursos.
+- `src/data/`: contiene los servicios, las reservas y sus contadores de IDs.
+- `src/config/env.config.js`: carga y revisa las variables de entorno.
+- `src/app.js`: configura Express y conecta las rutas.
+- `src/server.js`: inicia el servidor.
 
-Flujo:
+Por ejemplo, al agregar un servicio a una reserva, el controller pasa los IDs
+al service. El service consulta los repositories para comprobar que ambos
+existan. Si el servicio ya estaba agregado, aumenta `quantity`; si no, lo
+agrega con cantidad 1. El repository manda el resultado al DAO para guardarlo.
 
-Cliente → Route → Controller → Manager → Archivo JSON
+Los controllers y services no leen archivos. Para usar otra persistencia más
+adelante, se puede cambiar el DAO conectado al repository.
 
-## Persistencia
+## Rutas
 
-Los datos se almacenan en:
+| Método | Ruta | Qué hace |
+| --- | --- | --- |
+| GET | `/api/services` | Lista los servicios |
+| GET | `/api/services/:sid` | Busca un servicio por ID |
+| POST | `/api/services` | Crea un servicio |
+| PUT | `/api/services/:sid` | Actualiza campos de un servicio |
+| DELETE | `/api/services/:sid` | Elimina un servicio |
+| POST | `/api/bookings` | Crea una reserva |
+| GET | `/api/bookings/:bid` | Busca una reserva por ID |
+| POST | `/api/bookings/:bid/services/:sid` | Agrega un servicio a una reserva |
 
--   src/data/services.json
--   src/data/bookings.json
+`sid` es el ID de un servicio y `bid` el de una reserva. Hay que reemplazarlos
+por los valores devueltos al crear cada recurso. También se conserva `GET /`
+para comprobar que la API responde.
 
-La lectura y escritura se realiza mediante `fs.promises`.
+Para filtrar servicios: `GET /api/services?category=salud&available=true`.
+`category` usa coincidencia exacta; usar `true` o `false` para `available`.
 
-## Services
+## Ejemplos para Postman
 
-Endpoints:
+Seleccionar **Body → raw → JSON** en las peticiones que llevan datos.
+Enviar `Content-Type: application/json`.
 
-GET /api/services
+### Crear un servicio
 
-GET /api/services/:sid
+`POST http://localhost:8080/api/services`
 
-POST /api/services
+```json
+{
+  "name": "Consulta general",
+  "description": "Consulta de 30 minutos",
+  "duration": 30,
+  "price": 25,
+  "category": "salud",
+  "available": true
+}
+```
 
-PUT /api/services/:sid
+Todos esos campos son obligatorios. `name`, `description` y `category` son
+textos no vacíos. `duration` es un número mayor que cero (minutos), `price`
+es un número mayor o igual a cero y `available` es booleano, sin comillas.
+El ID se genera automáticamente.
 
-DELETE /api/services/:sid
+### Actualizar un servicio
 
-Los IDs se generan automáticamente al crear servicios.
+`PUT http://localhost:8080/api/services/1`
 
-## Bookings
+```json
+{
+  "price": 30,
+  "available": false
+}
+```
 
-Endpoints:
+Se pueden enviar solo los campos que se quieren cambiar; conservan el mismo
+formato del POST. Los demás quedan igual. No se puede cambiar el ID y los
+campos que no pertenecen al servicio se ignoran.
 
-POST /api/bookings
+### Crear una reserva
 
-GET /api/bookings/:bid
+`POST http://localhost:8080/api/bookings`
 
-POST /api/bookings/:bid/services/:sid
+```json
+{
+  "clientName": "Ana Perez",
+  "clientEmail": "ana@example.com",
+  "date": "2026-10-10",
+  "time": "10:30",
+  "status": "pending",
+  "services": [
+    { "service": 1, "quantity": 1 }
+  ]
+}
+```
 
-Las reservas almacenan únicamente la referencia del servicio mediante su
-ID y la cantidad solicitada.
+`clientName`, `clientEmail`, `date`, `time` y `status` son obligatorios.
+El nombre y el estado deben ser textos no vacíos; se usa `pending` en este
+ejemplo. El email debe tener un formato válido, la fecha debe existir y
+seguir `YYYY-MM-DD`, y la hora usa `HH:mm` en formato de 24 horas.
 
-Si un servicio ya existe dentro de una reserva, se incrementa la
-cantidad en lugar de duplicarlo.
+`services` es opcional: se puede omitir o enviar `[]`. Si se incluye, cada
+elemento necesita `service` (ID de un servicio existente) y `quantity`
+(entero positivo). Solo se guardan el ID y la cantidad, no el servicio
+completo. Si se repite un ID en el body, se suman sus cantidades.
 
-## Variables de entorno
+### Agregar un servicio a una reserva
 
-  Variable   Descripción
-  ---------- ---------------------------------
-  PORT       Puerto donde inicia el servidor
-  NODE_ENV   Ambiente de ejecución
+`POST http://localhost:8080/api/bookings/1/services/1`
 
-## Notas
+No necesita body. Repetir la petición aumenta la cantidad del mismo servicio.
+Si la reserva o el servicio no existen, devuelve 404.
 
--   Los archivos JSON mantienen la información después de reiniciar el
-    servidor.
--   `.env` y `node_modules` están excluidos mediante `.gitignore`.
--   El proyecto utiliza módulos ES con import/export.
+## Respuestas y datos
+
+Las consultas, actualizaciones y eliminaciones responden 200; las creaciones,
+201. La respuesta correcta tiene `status: "success"` y los datos en `payload`.
+Los errores tienen `status: "error"` y un `message`. Los datos inválidos al
+crear o actualizar devuelven 400 y las búsquedas sin resultado devuelven 404.
+
+Los datos iniciales del ZIP se mantienen en `src/data/services.json` y
+`src/data/bookings.json`. Las pruebas manuales modifican estos archivos.
+Los cambios se conservan al reiniciar el servidor.
+
+Los archivos `services.counter.json` y `bookings.counter.json` guardan el
+último ID asignado. No hay que borrarlos al eliminar registros: evitan que se
+reutilicen IDs. Se deben subir junto con los datos. Esta versión con archivos
+está pensada para ejecutar una sola instancia del servidor a la vez.
+
+## Pruebas
+
+```bash
+npm test
+```
+
+Las pruebas usan una copia temporal de los datos, por lo que no cambian los
+JSON de la entrega. Revisan las rutas, filtros, validaciones, actualización,
+eliminación, persistencia, IDs y el incremento de cantidades con varias
+peticiones. No necesitan crear `.env`.
+
+## Antes de entregar
+
+- Crear `.env` solo en la computadora local y comprobar `npm start`.
+- Ejecutar `npm test` y probar las rutas en Postman con los ejemplos de arriba.
+- Revisar los JSON después de las pruebas manuales y no subir datos personales reales.
+- Subir el contenido de esta carpeta al repositorio, incluyendo `.env.example`, `.gitignore`, `package-lock.json` y los contadores.
+- No subir `.env`, `node_modules` ni credenciales. Ya están excluidos los archivos locales habituales en `.gitignore`.
+- Dejar el repositorio público y entregar su enlace, como pide la consigna.

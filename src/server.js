@@ -1,12 +1,10 @@
 import app from './app.js';
 import config from './config/env.config.js';
-import ServiceManager from './managers/ServiceManager.js';
-
-const serviceManager = new ServiceManager();
+import { getServices } from './services/services.service.js';
 
 async function startServer() {
   try {
-    const services = await serviceManager.getServices();
+    const services = await getServices();
 
     app.listen(config.port, () => {
       console.log('Servidor iniciado correctamente.');
