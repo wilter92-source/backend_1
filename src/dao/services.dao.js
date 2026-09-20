@@ -1,4 +1,9 @@
-import { fileURLToPath } from 'node:url';
-import JsonDao from './json.dao.js';
+import { ServiceModel } from './models/service.model.js';
 
-export default new JsonDao(fileURLToPath(new URL('../data/services.json', import.meta.url)));
+export default {
+  getAll: () => ServiceModel.find().lean(),
+  getById: (id) => ServiceModel.findById(id).lean(),
+  create: (data) => ServiceModel.create(data),
+  update: (id, data) => ServiceModel.findByIdAndUpdate(id, data, { new: true, runValidators: true }).lean(),
+  delete: (id) => ServiceModel.findByIdAndDelete(id).lean()
+};

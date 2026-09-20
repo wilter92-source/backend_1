@@ -1,63 +1,59 @@
+import mongoose from 'mongoose';
 import * as bookingsRepository from '../repositories/bookings.repository.js';
 import * as servicesRepository from '../repositories/services.repository.js';
 
-const validId = id => Number.isSafeInteger(Number(id)) && Number(id) > 0;
-let pendingAddition = Promise.resolve();
+const validId = id => mongoose.Types.ObjectId.isValid(id);
 
 export async function createBooking(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     throw new Error('Los datos de la reserva deben ser un objeto válido.');
   }
-  const required = ['clientName', 'clientEmail', 'date', 'time', 'status'];
-  const missing = required.filter(field => typeof data[field] !== 'string' || !data[field].trim());
-  if (missing.length) throw new Error(`Faltan campos obligatorios o son inválidos: ${missing.join(', ')}`);
+
+  const required = ['clientName', 'clientEmail', 'date', 'time'];
+  const missing = required.filter(field => !data[field]);
+  if (missing.length) throw new Error(`Faltan campos obligatorios: ${missing.join(', ')}`);
+
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.clientEmail)) {
-    throw new Error('clientEmail debe tener un formato de email válido.');
+    throw new Error('clientEmail debe tener formato válido.');
   }
-  const parsedDate = new Date(`${data.date}T00:00:00.000Z`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date) || !Number.isFinite(parsedDate.getTime()) ||
-      parsedDate.toISOString().slice(0, 10) !== data.date) {
-    throw new Error('date debe ser una fecha válida con formato YYYY-MM-DD.');
-  }
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.time)) throw new Error('time debe tener formato HH:mm (24 horas).');
-  if (data.services !== undefined && !Array.isArray(data.services)) {
-    throw new Error('services debe ser un array.');
-  }
+
   const services = [];
   for (const item of data.services ?? []) {
-    if (!item || !validId(item.service) || !Number.isSafeInteger(item.quantity) || item.quantity <= 0) {
-      throw new Error('Cada servicio debe tener un ID válido y quantity entero mayor que cero.');
+    if (!validId(item.service) || !Number.isInteger(item.quantity) || item.quantity <= 0) {
+      throw new Error('Servicio inválido.');
     }
-    const id = Number(item.service);
-    if (!await servicesRepository.getById(id)) throw new Error(`El servicio ${id} no existe.`);
-    const existing = services.find(entry => entry.service === id);
-    if (existing) {
-      if (!Number.isSafeInteger(existing.quantity + item.quantity)) throw new Error('quantity es demasiado grande.');
-      existing.quantity += item.quantity;
-    } else services.push({ service: id, quantity: item.quantity });
+    if (!await servicesRepository.getById(item.service)) {
+      throw new Error('El servicio no existe.');
+    }
+    services.push({ service: item.service, quantity: item.quantity });
   }
+
   return bookingsRepository.create({
-    clientName: data.clientName, clientEmail: data.clientEmail,
-    date: data.date, time: data.time, status: data.status, services
+    clientName: data.clientName,
+    clientEmail: data.clientEmail,
+    date: data.date,
+    time: data.time,
+    status: data.status ?? 'pending',
+    services
   });
 }
 
-export const getBookingById = id => validId(id) ? bookingsRepository.getById(Number(id)) : null;
+export const getBookingById = id => validId(id) ? bookingsRepository.getById(id) : null;
 
-export function addServiceToBooking(bookingId, serviceId) {
-  // Evita perder incrementos si llegan varias peticiones a la vez.
-  const operation = pendingAddition.then(async () => {
-    if (!validId(bookingId) || !validId(serviceId)) return null;
-    const booking = await bookingsRepository.getById(Number(bookingId));
-    const service = await servicesRepository.getById(Number(serviceId));
-    if (!booking || !service) return null;
-    const existing = booking.services.find(item => item.service === service.id);
-    if (existing) {
-      if (!Number.isSafeInteger(existing.quantity + 1)) throw new Error('quantity es demasiado grande.');
-      existing.quantity += 1;
-    } else booking.services.push({ service: service.id, quantity: 1 });
-    return bookingsRepository.update(booking.id, { services: booking.services });
-  });
-  pendingAddition = operation.catch(() => {});
-  return operation;
+export async function addServiceToBooking(bookingId, serviceId) {
+  if (!validId(bookingId) || !validId(serviceId)) return null;
+  const booking = await bookingsRepository.getById(bookingId);
+  const service = await servicesRepository.getById(serviceId);
+  if (!booking || !service) return null;
+
+  const services = booking.services.map(item => ({
+    service: item.service._id ?? item.service,
+    quantity: item.quantity
+  }));
+
+  const existing = services.find(item => String(item.service) === String(serviceId));
+  if (existing) existing.quantity += 1;
+  else services.push({ service: serviceId, quantity: 1 });
+
+  return bookingsRepository.update(bookingId, { services });
 }

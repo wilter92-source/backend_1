@@ -1,7 +1,9 @@
 import * as repository from '../repositories/services.repository.js';
 
 const fields = ['name', 'description', 'duration', 'price', 'category', 'available'];
-const validId = id => Number.isSafeInteger(Number(id)) && Number(id) > 0;
+import mongoose from 'mongoose';
+
+const validId = id => mongoose.Types.ObjectId.isValid(id);
 
 function validate(data, required = false) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -39,13 +41,13 @@ export async function getServices({ category, available } = {}) {
   return services;
 }
 
-export const getServiceById = id => validId(id) ? repository.getById(Number(id)) : null;
+export const getServiceById = id => validId(id) ? repository.getById(id) : null;
 export const createService = data => repository.create(validate(data, true));
 
 export async function updateService(id, data) {
   if (!validId(id)) return null;
-  if (!await repository.getById(Number(id))) return null;
-  return repository.update(Number(id), validate(data));
+  if (!await repository.getById(id)) return null;
+  return repository.update(id, validate(data));
 }
 
-export const deleteService = id => validId(id) ? repository.delete(Number(id)) : null;
+export const deleteService = id => validId(id) ? repository.delete(id) : null;

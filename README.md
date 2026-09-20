@@ -1,7 +1,7 @@
-# Backend de Turnos y Reservas - Pre-entrega 5
+# Backend de Turnos y Reservas - Pre-entrega 6
 
 Es una API para crear servicios y armar reservas. Está hecha con Node.js,
-Express y JavaScript con módulos ES. Los datos se guardan en archivos JSON.
+Express y JavaScript con módulos ES. Los datos se guardan en MongoDB Atlas mediante Mongoose.
 
 En esta entrega separé lo que estaba en los managers en tres capas:
 services, repositories y DAO. Las rutas de la API siguen siendo las mismas.
@@ -19,6 +19,7 @@ Crear un archivo `.env` copiando `.env.example`. Debe quedar así:
 ```env
 PORT=8080
 NODE_ENV=development
+MONGO_URI=tu_uri_de_mongodb_atlas
 ```
 
 Después ejecutar:
@@ -27,20 +28,27 @@ Después ejecutar:
 npm start
 ```
 
+Para cargar los servicios iniciales desde el JSON hacia MongoDB:
+
+```bash
+npm run seed
+```
+
 La dirección es `http://localhost:8080`. Si cambio PORT, también tengo que
 cambiar el puerto en Postman. Para trabajar con reinicio automático puedo
 usar `npm run dev`.
 
 ## Cómo organicé las capas
 
-El recorrido es: router → controller → service → repository → DAO → archivo JSON.
+El recorrido es: router → controller → service → repository → DAO → MongoDB.
 
 - `src/routes/`: define las URLs y llama a los controllers.
 - `src/controllers/`: recibe los datos de la petición y devuelve la respuesta HTTP.
 - `src/services/`: valida los datos y contiene las reglas de servicios y reservas.
 - `src/repositories/`: pasa las operaciones al DAO, sin reglas de negocio.
-- `src/dao/`: lee y escribe los JSON. `json.dao.js` reúne las operaciones de archivos que comparten los dos recursos.
-- `src/data/`: contiene los servicios, las reservas y sus contadores de IDs.
+- `src/dao/`: contiene los DAOs que conectan con los modelos Mongoose y MongoDB.
+- `src/dao/models/`: contiene los esquemas de Service, Booking y Message.
+- `src/data/`: contiene los datos JSON usados como fuente para la carga inicial.
 - `src/config/env.config.js`: carga y revisa las variables de entorno.
 - `src/app.js`: configura Express y conecta las rutas.
 - `src/server.js`: inicia el servidor.
@@ -154,9 +162,7 @@ Las consultas, actualizaciones y eliminaciones responden 200; las creaciones,
 Los errores tienen `status: "error"` y un `message`. Los datos inválidos al
 crear o actualizar devuelven 400 y las búsquedas sin resultado devuelven 404.
 
-Los datos iniciales del ZIP se mantienen en `src/data/services.json` y
-`src/data/bookings.json`. Las pruebas manuales modifican estos archivos.
-Los cambios se conservan al reiniciar el servidor.
+Los datos se almacenan en MongoDB Atlas. Los archivos de `src/data/` se mantienen como fuente de carga inicial y pueden migrarse ejecutando el script de seed.
 
 Los archivos `services.counter.json` y `bookings.counter.json` guardan el
 último ID asignado. No hay que borrarlos al eliminar registros: evitan que se
