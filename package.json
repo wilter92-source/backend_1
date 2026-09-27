@@ -1,14 +1,16 @@
 {
   "name": "backend-turnos-reservas-mongodb",
-  "version": "1.0.0",
-  "description": "Administrador de servicios para un sistema de turnos y reservas con Node.js y ESM.",
+  "version": "1.1.0",
+  "description": "Pre-entrega 7: API REST, MongoDB, Handlebars y Socket.io con arquitectura en capas.",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "seed": "node scripts/seed.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:smoke": "node --test test/smoke.test.js",
+    "test:integration": "node --test test/api.test.js"
   },
   "keywords": [
     "node",
@@ -23,7 +25,16 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
-    "mongodb": "^7.6.0",
-    "mongoose": "^8.24.4"
+    "express-handlebars": "^8.0.7",
+    "mongoose": "^8.24.4",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "mongodb-memory-server": "^10.4.3",
+    "socket.io-client": "^4.8.4"
+  },
+  "engines": {
+    "node": ">=22.22.2"
   }
 }

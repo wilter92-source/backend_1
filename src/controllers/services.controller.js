@@ -1,3 +1,4 @@
+import { respondError } from '../utils/errors.js';
 import * as serviceService from '../services/services.service.js';
 
 export const getServices = async (req, res) => {
@@ -6,7 +7,7 @@ export const getServices = async (req, res) => {
 
     res.status(200).json({ status: 'success', payload: services });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    respondError(res, error);
   }
 };
 
@@ -18,39 +19,42 @@ export const getServiceById = async (req, res) => {
     }
     res.status(200).json({ status: 'success', payload: service });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    respondError(res, error);
   }
 };
 
 export const createService = async (req, res) => {
   try {
     const service = await serviceService.createService(req.body);
+    if (service) req.app.get('io')?.emit('services:changed', { action: 'created', id: String(service._id) });
     res.status(201).json({ status: 'success', payload: service });
   } catch (error) {
-    res.status(400).json({ status: 'error', message: error.message });
+    respondError(res, error);
   }
 };
 
 export const updateService = async (req, res) => {
   try {
     const service = await serviceService.updateService(req.params.sid, req.body);
+    if (service) req.app.get('io')?.emit('services:changed', { action: 'updated', id: String(service._id) });
     if (!service) {
       return res.status(404).json({ status: 'error', message: 'Servicio no encontrado' });
     }
     res.status(200).json({ status: 'success', payload: service });
   } catch (error) {
-    res.status(400).json({ status: 'error', message: error.message });
+    respondError(res, error);
   }
 };
 
 export const deleteService = async (req, res) => {
   try {
     const service = await serviceService.deleteService(req.params.sid);
+    if (service) req.app.get('io')?.emit('services:changed', { action: 'deleted', id: String(service._id) });
     if (!service) {
       return res.status(404).json({ status: 'error', message: 'Servicio no encontrado' });
     }
     res.status(200).json({ status: 'success', payload: service });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    respondError(res, error);
   }
 };

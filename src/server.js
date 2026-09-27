@@ -1,28 +1,18 @@
-
-import dns from 'node:dns/promises';
-
-dns.setServers(['8.8.8.8', '1.1.1.1']);
-
+import mongoose from 'mongoose';
 import app from './app.js';
 import config from './config/env.config.js';
-import { getServices } from './services/services.service.js';
 import { connectDB } from './config/database.config.js';
-
-async function startServer() {
-  try {
-    await connectDB();
-    const services = await getServices();
-
-    app.listen(config.port, () => {
-      console.log('Servidor iniciado correctamente.');
-      console.log(`Entorno: ${config.nodeEnv}`);
-      console.log(`Puerto: ${config.port}`);
-      console.log(`Servicios registrados: ${services.length}`);
-    });
-  } catch (error) {
-    console.error(`Error al iniciar servidor: ${error.message}`);
-    process.exitCode = 1;
-  }
+import { createHttpServer } from './config/socket.config.js';
+try {
+  await connectDB(config.mongoUri);
+  const { server, io } = createHttpServer(app);
+  server.listen(config.port, () => console.log(`Servidor disponible en http://localhost:${config.port}/views/services`));
+  server.on('error', async () => { console.error('No se pudo abrir el puerto.'); await mongoose.disconnect(); process.exitCode = 1; });
+  const shutdown = () => io.close(async () => { await mongoose.disconnect(); });
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+} catch {
+  console.error('No se pudo conectar a MongoDB. Revisa MONGO_URI, permisos de red y disponibilidad del servidor.');
+  await mongoose.disconnect();
+  process.exitCode = 1;
 }
-
-startServer();

@@ -7,8 +7,8 @@ const bookingSchema = new mongoose.Schema({
   time: { type: String, required: true },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
   services: [{
-    service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service' },
-    quantity: { type: Number, default: 1 }
+    service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
+    quantity: { type: Number, default: 1, min: 1, validate: Number.isSafeInteger }
   }]
 }, { timestamps: true });
 

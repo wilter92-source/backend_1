@@ -1,0 +1,419 @@
+{
+  "info": {
+    "name": "Módulo 7 — Turnos y reservas",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecutar en orden en una base de desarrollo. Crea una reserva y un mensaje de prueba que se conservan; elimina el servicio creado al final."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "sid",
+      "value": ""
+    },
+    {
+      "key": "bid",
+      "value": ""
+    },
+    {
+      "key": "mid",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Crear servicio",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/services",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Servicio prueba módulo 7\",\n  \"description\": \"Creado desde Postman\",\n  \"duration\": 30,\n  \"price\": 25,\n  \"category\": \"prueba-modulo7\",\n  \"available\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('sid', pm.response.json().payload._id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Filtrar servicios",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/services?category=prueba-modulo7&available=true&sort=price&order=asc&page=1&limit=10"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Servicio encontrado', () => pm.expect(pm.response.json().payload.some(x => x._id === pm.collectionVariables.get('sid'))).to.be.true);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Cambiar disponibilidad y observar la vista",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/services/{{sid}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"available\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('No disponible', () => pm.expect(pm.response.json().payload.available).to.be.false);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Crear reserva con referencia",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientName\": \"Ana Prueba\",\n  \"clientEmail\": \"ana@example.com\",\n  \"date\": \"2026-10-10\",\n  \"time\": \"10:30\",\n  \"status\": \"pending\",\n  \"services\": [\n    {\n      \"service\": \"{{sid}}\",\n      \"quantity\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('bid', pm.response.json().payload._id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Consultar reserva con populate",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const service = pm.response.json().payload.services[0].service;",
+              "pm.test('Referencia poblada', () => { pm.expect(service._id).to.eql(pm.collectionVariables.get('sid')); pm.expect(service.name).to.eql('Servicio prueba módulo 7'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Agregar de nuevo el servicio",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}/services/{{sid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Cantidad incrementada', () => pm.expect(pm.response.json().payload.services[0].quantity).to.eql(2));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Filtrar reservas",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings?status=pending&date=2026-10-10&sort=time&order=asc&limit=10"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Crear mensaje",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user\": \"Ana Prueba\",\n  \"message\": \"Prueba completa del sistema\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('mid', pm.response.json().payload._id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Consultar mensaje",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/messages/{{mid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Vista servicios",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/views/services"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('HTML', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/html'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Vista reservas",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/views/bookings"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('HTML', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/html'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Rechazar fecha inexistente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientName\": \"Ana\",\n  \"clientEmail\": \"ana@example.com\",\n  \"date\": \"2026-02-30\",\n  \"time\": \"10:30\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Eliminar servicio de prueba",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/services/{{sid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 La reserva conserva el registro tras eliminar servicio",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Referencia eliminada sin romper reserva', () => pm.expect(pm.response.json().payload.services[0].service).to.be.null);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

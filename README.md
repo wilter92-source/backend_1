@@ -1,94 +1,85 @@
-# Backend de Turnos y Reservas - Pre-entrega 6
+# Backend de Turnos y Reservas — Pre-entrega 7
 
-Es una API para crear servicios y armar reservas. Está hecha con Node.js,
-Express y JavaScript con módulos ES. Los datos se guardan en MongoDB Atlas mediante Mongoose.
+API REST con MongoDB, arquitectura en capas, vistas Handlebars y actualizaciones en tiempo real con Socket.io. Las vistas consultan los mismos servicios de negocio que la API; los registros se leen de MongoDB, no de archivos JSON ni de datos fijos dentro de las plantillas.
 
-En esta entrega separé lo que estaba en los managers en tres capas:
-services, repositories y DAO. Las rutas de la API siguen siendo las mismas.
+## Inicio rápido
 
-## Cómo iniciarlo
+Requisitos: Node.js 22.22.2 o superior (recomendado: Node.js 24), npm y MongoDB 6 o superior, local o Atlas.
 
-Usar Node.js 20 o superior. Desde la carpeta donde está `package.json`:
+1. Abrir una terminal en esta carpeta, donde está `package.json`.
+2. Ejecutar `npm ci`.
+3. Copiar `.env.example` como `.env` y configurar `MONGO_URI`. Si ya tienes un `.env` válido de la entrega anterior, puedes conservarlo. Para Atlas, usar la cadena de conexión de tu cuenta y habilitar acceso desde tu equipo. Nunca publicar esa cadena.
+4. Ejecutar `npm run seed` si quieres cargar el catálogo de ejemplo. Es opcional: inserta servicios que no existan y no borra los datos actuales.
+5. Ejecutar `npm start`.
+6. Abrir `http://localhost:8080/views/services` y `http://localhost:8080/views/bookings`.
 
-```bash
-npm ci
-```
-
-Crear un archivo `.env` copiando `.env.example`. Debe quedar así:
+`.env.example` usa un MongoDB local; no instala ni inicia MongoDB. Si eliges esa configuración, el servicio de MongoDB debe estar activo. El servidor conecta la base **antes** de escuchar peticiones. `npm run dev` inicia Node con reinicio automático al editar.
 
 ```env
 PORT=8080
 NODE_ENV=development
-MONGO_URI=tu_uri_de_mongodb_atlas
+MONGO_URI=mongodb://127.0.0.1:27017/turnos_reservas
 ```
 
-Después ejecutar:
+Las reservas se crean mediante la API o la colección de Postman incluida. Una base sin reservas muestra un estado vacío válido, no registros inventados.
 
-```bash
-npm start
-```
+## Vistas y tiempo real
 
-Para cargar los servicios iniciales desde el JSON hacia MongoDB:
+| Ruta | Contenido |
+| --- | --- |
+| `/views/services` | Nombre, descripción, duración, precio, categoría y disponibilidad |
+| `/views/bookings` | Cliente, email, fecha, hora, estado, servicios poblados y cantidades |
 
-```bash
-npm run seed
-```
+Handlebars genera el HTML inicial. `public/js/socket.js` escucha los eventos siguientes:
 
-La dirección es `http://localhost:8080`. Si cambio PORT, también tengo que
-cambiar el puerto en Postman. Para trabajar con reinicio automático puedo
-usar `npm run dev`.
+| Evento | Acción real que lo emite |
+| --- | --- |
+| `services:changed` | Crear, actualizar o eliminar un servicio por la API |
+| `bookings:changed` | Crear una reserva o agregar un servicio a una reserva |
 
-## Cómo organicé las capas
+El evento se emite después de guardar el cambio correctamente. Contiene `action` e `id`; el navegador vuelve a consultar la API con sus filtros actuales y reemplaza únicamente la lista. No se recarga la página. La vista de reservas escucha también los cambios de servicios para reflejar modificaciones del nombre o referencias eliminadas.
 
-El recorrido es: router → controller → service → repository → DAO → MongoDB.
+Los listeners se registran una sola vez. Al reconectar se recupera el estado actual desde MongoDB. Un cambio hecho directamente en Atlas, por fuera de la aplicación, no genera estos eventos: para la demostración deben usarse las rutas de la API. El proyecto corre en una instancia de Node.
 
-- `src/routes/`: define las URLs y llama a los controllers.
-- `src/controllers/`: recibe los datos de la petición y devuelve la respuesta HTTP.
-- `src/services/`: valida los datos y contiene las reglas de servicios y reservas.
-- `src/repositories/`: pasa las operaciones al DAO, sin reglas de negocio.
-- `src/dao/`: contiene los DAOs que conectan con los modelos Mongoose y MongoDB.
-- `src/dao/models/`: contiene los esquemas de Service, Booking y Message.
-- `src/data/`: contiene los datos JSON usados como fuente para la carga inicial.
-- `src/config/env.config.js`: carga y revisa las variables de entorno.
-- `src/app.js`: configura Express y conecta las rutas.
-- `src/server.js`: inicia el servidor.
+Las plantillas escapan los datos con `{{campo}}`. El cliente usa `textContent` y nodos DOM, sin interpolar datos de usuarios en `innerHTML`. `{{{body}}}` solo inserta el layout renderizado. No se usa un CDN para Socket.io: el propio servidor sirve su cliente.
 
-Por ejemplo, al agregar un servicio a una reserva, el controller pasa los IDs
-al service. El service consulta los repositories para comprobar que ambos
-existan. Si el servicio ya estaba agregado, aumenta `quantity`; si no, lo
-agrega con cantidad 1. El repository manda el resultado al DAO para guardarlo.
+## Demostración con Postman
 
-Los controllers y services no leen archivos. Para usar otra persistencia más
-adelante, se puede cambiar el DAO conectado al repository.
+1. Iniciar el servidor y abrir las dos vistas en el navegador. También puedes abrir servicios en dos pestañas.
+2. Importar `postman/Modulo7.postman_collection.json` en Postman.
+3. Revisar la variable de colección `baseUrl`, por defecto `http://localhost:8080`.
+4. Ejecutar las peticiones en orden, manualmente o con Collection Runner. Las pruebas guardan automáticamente `sid`, `bid` y `mid`; no hace falta copiar IDs.
+5. En la petición 01 aparece el servicio en las pestañas abiertas; en la 03 cambia su disponibilidad sin F5.
+6. En la 04 aparece la reserva. La 05 comprueba que `populate` devuelve el nombre y el `_id` del servicio. La 06 verifica cantidad 2.
+7. La 13 elimina el servicio de prueba. La reserva queda visible como «Servicio eliminado»; la 14 comprueba la referencia nula.
 
-## Rutas
+La colección crea una reserva y un mensaje de demostración que se conservan. Ejecutarla en una base de desarrollo. No contiene credenciales. Su ejecución en Postman con MongoDB queda pendiente de verificación local; no se presenta como una ejecución ya realizada.
 
-| Método | Ruta | Qué hace |
+## API REST
+
+La respuesta mantiene `{ "status": "success", "payload": ... }`. Los listados mantienen un array en `payload`. Las creaciones responden 201; consultas, cambios y eliminaciones, 200; validación inválida, 400; recurso no encontrado, 404; fallo interno, 500.
+
+| Método | Ruta | Función |
 | --- | --- | --- |
-| GET | `/api/services` | Lista los servicios |
-| GET | `/api/services/:sid` | Busca un servicio por ID |
-| POST | `/api/services` | Crea un servicio |
-| PUT | `/api/services/:sid` | Actualiza campos de un servicio |
-| DELETE | `/api/services/:sid` | Elimina un servicio |
-| POST | `/api/bookings` | Crea una reserva |
-| GET | `/api/bookings/:bid` | Busca una reserva por ID |
-| POST | `/api/bookings/:bid/services/:sid` | Agrega un servicio a una reserva |
+| GET | `/` | Estado básico de la API |
+| GET | `/api/services` | Listar servicios |
+| GET | `/api/services/:sid` | Consultar servicio |
+| POST | `/api/services` | Crear servicio |
+| PUT | `/api/services/:sid` | Actualizar campos |
+| DELETE | `/api/services/:sid` | Eliminar servicio |
+| GET | `/api/bookings` | Listar reservas con populate |
+| POST | `/api/bookings` | Crear reserva |
+| GET | `/api/bookings/:bid` | Consultar reserva con populate |
+| POST | `/api/bookings/:bid/services/:sid` | Agregar servicio o incrementar su cantidad |
+| GET | `/api/messages` | Listar mensajes |
+| POST | `/api/messages` | Crear mensaje |
+| GET | `/api/messages/:mid` | Consultar mensaje |
 
-`sid` es el ID de un servicio y `bid` el de una reserva. Hay que reemplazarlos
-por los valores devueltos al crear cada recurso. También se conserva `GET /`
-para comprobar que la API responde.
+Todos los IDs son `_id` de MongoDB (24 caracteres hexadecimales). No usar IDs numéricos de entregas anteriores.
 
-Para filtrar servicios: `GET /api/services?category=salud&available=true`.
-`category` usa coincidencia exacta; usar `true` o `false` para `available`.
+### Crear servicio
 
-## Ejemplos para Postman
-
-Seleccionar **Body → raw → JSON** en las peticiones que llevan datos.
-Enviar `Content-Type: application/json`.
-
-### Crear un servicio
-
-`POST http://localhost:8080/api/services`
+`POST /api/services`, Body → raw → JSON:
 
 ```json
 {
@@ -101,90 +92,120 @@ Enviar `Content-Type: application/json`.
 }
 ```
 
-Todos esos campos son obligatorios. `name`, `description` y `category` son
-textos no vacíos. `duration` es un número mayor que cero (minutos), `price`
-es un número mayor o igual a cero y `available` es booleano, sin comillas.
-El ID se genera automáticamente.
+Los seis campos son obligatorios en POST. Nombre, descripción y categoría deben ser textos no vacíos; duración debe ser positiva; precio, no negativo; disponibilidad, booleano. PUT acepta una selección de estos campos. Los campos desconocidos y `_id` no se actualizan.
 
-### Actualizar un servicio
+### Crear reserva
 
-`PUT http://localhost:8080/api/services/1`
+`POST /api/bookings`. Sustituir el ID ilustrativo por el `_id` real de un servicio existente:
 
 ```json
 {
-  "price": 30,
-  "available": false
-}
-```
-
-Se pueden enviar solo los campos que se quieren cambiar; conservan el mismo
-formato del POST. Los demás quedan igual. No se puede cambiar el ID y los
-campos que no pertenecen al servicio se ignoran.
-
-### Crear una reserva
-
-`POST http://localhost:8080/api/bookings`
-
-```json
-{
-  "clientName": "Ana Perez",
+  "clientName": "Ana Prueba",
   "clientEmail": "ana@example.com",
   "date": "2026-10-10",
   "time": "10:30",
   "status": "pending",
   "services": [
-    { "service": 1, "quantity": 1 }
+    { "service": "507f1f77bcf86cd799439011", "quantity": 1 }
   ]
 }
 ```
 
-`clientName`, `clientEmail`, `date`, `time` y `status` son obligatorios.
-El nombre y el estado deben ser textos no vacíos; se usa `pending` en este
-ejemplo. El email debe tener un formato válido, la fecha debe existir y
-seguir `YYYY-MM-DD`, y la hora usa `HH:mm` en formato de 24 horas.
+`status` admite `pending`, `confirmed` o `cancelled`, con `pending` por defecto. `services` puede omitirse o ser un array vacío. La fecha debe existir y usar `YYYY-MM-DD`; la hora usa `HH:mm` de 24 horas. Se verifica la existencia de cada servicio; las cantidades deben ser enteros positivos. Si se repite una referencia en el body, se suman sus cantidades.
 
-`services` es opcional: se puede omitir o enviar `[]`. Si se incluye, cada
-elemento necesita `service` (ID de un servicio existente) y `quantity`
-(entero positivo). Solo se guardan el ID y la cantidad, no el servicio
-completo. Si se repite un ID en el body, se suman sus cantidades.
+Agregar un servicio a una reserva usa una actualización atómica de MongoDB para no perder incrementos simultáneos. Una reserva conserva su referencia si el servicio se elimina; `populate` devuelve `null` y la vista muestra «Servicio eliminado».
 
-### Agregar un servicio a una reserva
+Este módulo registra reservas y la disponibilidad general del servicio. No implementa un calendario de cupos ni impide solapamientos horarios; no se presenta como un motor de asignación de turnos completos.
 
-`POST http://localhost:8080/api/bookings/1/services/1`
+### Crear mensaje
 
-No necesita body. Repetir la petición aumenta la cantidad del mismo servicio.
-Si la reserva o el servicio no existen, devuelve 404.
+`POST /api/messages`:
 
-## Respuestas y datos
+```json
+{ "user": "Ana", "message": "Quisiera consultar un horario" }
+```
 
-Las consultas, actualizaciones y eliminaciones responden 200; las creaciones,
-201. La respuesta correcta tiene `status: "success"` y los datos en `payload`.
-Los errores tienen `status: "error"` y un `message`. Los datos inválidos al
-crear o actualizar devuelven 400 y las búsquedas sin resultado devuelven 404.
+Ambos campos son textos no vacíos. Máximos: 100 caracteres para `user`, 2000 para `message`.
 
-Los datos se almacenan en MongoDB Atlas. Los archivos de `src/data/` se mantienen como fuente de carga inicial y pueden migrarse ejecutando el script de seed.
+### Filtros, orden y paginación
 
-Los archivos `services.counter.json` y `bookings.counter.json` guardan el
-último ID asignado. No hay que borrarlos al eliminar registros: evitan que se
-reutilicen IDs. Se deben subir junto con los datos. Esta versión con archivos
-está pensada para ejecutar una sola instancia del servidor a la vez.
+Se aplican en MongoDB desde el DAO, no filtrando todos los registros en memoria. Son iguales en API y vistas para cada recurso.
+
+| Recurso | Filtros exactos | Campos de orden adicionales a createdAt |
+| --- | --- | --- |
+| Servicios | category, available=true/false | name, price, duration, category |
+| Reservas | status, date, clientEmail | date, time, clientName, status |
+| Mensajes | user | user |
+
+Todos admiten `page` (desde 1), `limit` (1–100), `sort` y `order=asc/desc`. Por defecto: `page=1`, `limit=20`, `sort=createdAt`, `order=desc`. Los empates se resuelven por `_id`. Una página sin resultados devuelve `[]`. No se incluye un total de páginas.
+
+```text
+/api/services?category=salud&available=true&page=1&limit=10&sort=price&order=asc
+/views/services?available=true&limit=50
+/api/bookings?status=pending&date=2026-10-10&sort=time&order=asc
+/views/bookings?status=pending
+```
+
+## Arquitectura
+
+`routes → controllers → services → repositories → DAO → models → MongoDB`
+
+- `src/routes/`: rutas de datos y de vistas, separadas.
+- `src/controllers/`: entrada y salida HTTP, renderizado y notificación de mutaciones exitosas.
+- `src/services/`: validación, reglas de negocio y preparación de consultas permitidas.
+- `src/repositories/`: acceso a la persistencia mediante DAOs.
+- `src/dao/`: consultas MongoDB, populate y actualización atómica.
+- `src/dao/models/`: Service, Booking y Message.
+- `src/views/`: layout, servicios, reservas y errores.
+- `public/`: CSS y cliente Socket.io.
+- `src/config/socket.config.js`: un solo servidor HTTP compartido por Express y Socket.io.
+- `src/data/services.json`: únicamente fuente de seed opcional. La aplicación y las pruebas no escriben en este archivo.
+
+Se retiraron el DAO JSON, los contadores y las reservas JSON antiguas. El seed no elimina documentos ni regenera IDs existentes; las referencias de MongoDB se conservan.
 
 ## Pruebas
 
 ```bash
+npm run test:smoke
+npm run test:integration
 npm test
 ```
 
-Las pruebas usan una copia temporal de los datos, por lo que no cambian los
-JSON de la entrega. Revisan las rutas, filtros, validaciones, actualización,
-eliminación, persistencia, IDs y el incremento de cantidades con varias
-peticiones. No necesitan crear `.env`.
+`test:smoke` no necesita MongoDB: comprueba validación, renderizado y escapado Handlebars, rutas básicas, transporte Socket.io real y actualización DOM en JSDOM. La respuesta HTTP de datos del cliente se sustituye únicamente en esa prueba; no demuestra persistencia.
 
-## Antes de entregar
+`test:integration` inicia **un proceso MongoDB real temporal** con `mongodb-memory-server`, conecta Mongoose antes de levantar HTTP y utiliza una base aleatoria `modulo7_test_<uuid>`. Al finalizar elimina solo esa base y cierra las conexiones. No usa `.env`, la base del proyecto ni archivos JSON. La primera ejecución puede descargar el binario de MongoDB y requiere acceso a Internet; el sistema debe permitir ejecutar `mongod`.
 
-- Crear `.env` solo en la computadora local y comprobar `npm start`.
-- Ejecutar `npm test` y probar las rutas en Postman con los ejemplos de arriba.
-- Revisar los JSON después de las pruebas manuales y no subir datos personales reales.
-- Subir el contenido de esta carpeta al repositorio, incluyendo `.env.example`, `.gitignore`, `package-lock.json` y los contadores.
-- No subir `.env`, `node_modules` ni credenciales. Ya están excluidos los archivos locales habituales en `.gitignore`.
-- Dejar el repositorio público y entregar su enlace, como pide la consigna.
+La integración comprueba CRUD, validaciones, filtros, orden y paginación, ObjectIds, populate, mensajes, cantidades concurrentes, SSR, archivos estáticos, dos clientes, cambios del DOM, escapado XSS y reconexión. También desconecta y reconecta Mongoose para comprobar persistencia.
+
+Si ya tienes un MongoDB de pruebas, puedes evitar la descarga del binario:
+
+PowerShell:
+
+```powershell
+$env:MONGO_TEST_URI="mongodb://127.0.0.1:27017"
+npm run test:integration
+Remove-Item Env:MONGO_TEST_URI
+```
+
+macOS o Linux:
+
+```bash
+MONGO_TEST_URI=mongodb://127.0.0.1:27017 npm run test:integration
+```
+
+La suite sigue seleccionando su propia base aleatoria; el usuario de MongoDB necesita permiso para crear y eliminar esa base. No usar credenciales de producción.
+
+### Verificación realizada al preparar este ZIP
+
+- `test:smoke`: **3 pruebas aprobadas**, 0 fallos.
+- Integración completa: **no verificada**. El entorno impidió iniciar `mongod` con `open: Operation not permitted` y salida 100. La suite falla visiblemente ante este problema; no omite las pruebas ni informa éxito falso.
+- Postman contra una base: colección preparada, ejecución pendiente en el equipo del estudiante.
+- Revisión de sintaxis y estructura del ZIP: consultar `docs/REVISION_MODULO_7.md`.
+
+## Entrega y actualización local
+
+Consultar primero `LEEME_PRIMERO.md` para reemplazar la versión anterior sin dejar archivos obsoletos. No se debe subir `.env`, `node_modules` ni credenciales. El ZIP incluye `.env.example`, `.gitignore`, `package-lock.json` y la colección de Postman.
+
+La consigna exige **el enlace a un repositorio público de GitHub**, no solamente este ZIP. Después de ejecutar las pruebas locales, subir estos archivos al repositorio y entregar su URL en el curso. El repositorio no se creó ni se publicó desde este entorno.
+
+El sistema mantiene el alcance del curso y no incluye autenticación. Utilizar datos ficticios para las demostraciones.
