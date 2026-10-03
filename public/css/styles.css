@@ -1,5 +1,0 @@
-:root { font-family: system-ui, sans-serif; color: #183348; background: #f3f6f8; line-height: 1.6; }
-* { box-sizing: border-box; } body { margin: 0; } header { background: #17384a; color: white; padding: 1.2rem max(5vw, 1rem); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-nav { display: flex; gap: 1.4rem; } nav a { color: white; } main { max-width: 1100px; margin: 2.5rem auto; padding: 0 1.2rem; }
-h1 { font-size: 2.2rem; margin-bottom: .3rem; } h2 { margin-top: 0; font-size: 1.25rem; } .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 1rem; }
-article { background: white; padding: 1.5rem; border: 1px solid #dce4e8; border-radius: 10px; overflow-wrap: anywhere; } article p { margin: .5rem 0; } .hint { color: #465c6b; font-size: .9rem; } #connection-status { font-size: .9rem; color: #285b46; }

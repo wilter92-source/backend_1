@@ -1,7 +1,0 @@
-<h1>Reservas</h1><p>Reservas guardadas y sus servicios asociados.</p>
-<p id="connection-status" role="status">Conectando…</p>
-<section id="live-list" class="grid" data-resource="bookings" aria-live="polite">
-{{#each bookings}}<article><h2>{{clientName}}</h2><p>Email: {{clientEmail}}</p><p>Fecha: {{date}}</p><p>Hora: {{time}}</p><p>Estado: {{status}}</p><ul>
-{{#each services}}<li>{{#if service}}{{service.name}}{{else}}Servicio eliminado{{/if}} — Cantidad: {{quantity}}</li>{{else}}<li>Sin servicios asociados.</li>{{/each}}</ul></article>
-{{else}}<p>No hay reservas para esta consulta.</p>{{/each}}
-</section><p class="hint">Se muestran 20 registros por defecto. Puedes usar page, limit, date, status, clientEmail, sort y order en la URL.</p>

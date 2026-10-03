@@ -1,7 +1,0 @@
-<h1>Servicios</h1><p>Catálogo del sistema. Los cambios se reflejan automáticamente.</p>
-<p id="connection-status" role="status">Conectando…</p>
-<section id="live-list" class="grid" data-resource="services" aria-live="polite">
-{{#each services}}<article><h2>{{name}}</h2><p>{{description}}</p><p>Duración: {{duration}} minutos</p><p>Precio: ${{price}}</p><p>Categoría: {{category}}</p><p>Disponible: {{#if available}}Sí{{else}}No{{/if}}</p></article>
-{{else}}<p>No hay servicios para esta consulta.</p>{{/each}}
-</section>
-<p class="hint">Se muestran 20 registros por defecto. Puedes usar los parámetros page, limit, category, available, sort y order en la URL.</p>
