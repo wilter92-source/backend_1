@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/api/bookings?status=pending&date=2026-10-10&sort=time&order=asc&limit=10"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  status: pending
+  date: 2026-10-10
+  sort: time
+  order: asc
+  limit: "10"
+scripts:
+  - type: afterResponse
+    code: pm.test('HTTP 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 7000

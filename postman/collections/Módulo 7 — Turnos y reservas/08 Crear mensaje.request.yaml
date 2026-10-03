@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/messages"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "user": "Ana Prueba",
+      "message": "Prueba completa del sistema"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 201', () => pm.response.to.have.status(201));
+      pm.collectionVariables.set('mid', pm.response.json().payload._id);
+    language: text/javascript
+order: 8000

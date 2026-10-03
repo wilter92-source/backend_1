@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/api/services/{{sid}}"
+method: DELETE
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test('HTTP 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 13000

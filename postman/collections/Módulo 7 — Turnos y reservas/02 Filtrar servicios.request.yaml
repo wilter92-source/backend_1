@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/services?category=prueba-modulo7&available=true&sortBy=price&order=asc&page=1&limit=10"
+method: GET
+headers:
+  Content-Type: application/json
+queryParams:
+  category: prueba-modulo7
+  available: "true"
+  sort: price
+  order: asc
+  page: "1"
+  limit: "10"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 200', () => pm.response.to.have.status(200));
+      pm.test('Servicio encontrado', () => pm.expect(pm.response.json().payload.some(x => x._id === pm.collectionVariables.get('sid'))).to.be.true);
+    language: text/javascript
+order: 2000

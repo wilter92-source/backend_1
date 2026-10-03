@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{baseUrl}}/api/bookings"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "clientName": "Ana Prueba",
+      "clientEmail": "ana@example.com",
+      "date": "2026-10-10",
+      "time": "10:30",
+      "status": "pending",
+      "services": [
+        {
+          "service": "{{sid}}",
+          "quantity": 1
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 201', () => pm.response.to.have.status(201));
+      pm.collectionVariables.set('bid', pm.response.json().payload._id);
+    language: text/javascript
+order: 4000

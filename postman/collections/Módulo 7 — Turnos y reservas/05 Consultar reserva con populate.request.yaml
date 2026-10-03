@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/bookings/{{bid}}"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 200', () => pm.response.to.have.status(200));
+      const service = pm.response.json().payload.services[0].service;
+      pm.test('Referencia poblada', () => { pm.expect(service._id).to.eql(pm.collectionVariables.get('sid')); pm.expect(service.name).to.eql('Servicio prueba módulo 7'); });
+    language: text/javascript
+order: 5000

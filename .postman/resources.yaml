@@ -1,0 +1,13 @@
+# Use this workspace to collaborate
+workspace:
+  id: 681db734-ab8d-4313-8532-81456125c9eb
+
+cloudResources:
+  collections:
+    ../postman/collections/Módulo 7 — Turnos y reservas: 228fe5aa-ff63-46ec-9284-3911aa63e82c
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/

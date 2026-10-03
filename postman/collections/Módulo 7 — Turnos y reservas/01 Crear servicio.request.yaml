@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/services"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Servicio prueba módulo 7",
+      "description": "Creado desde Postman",
+      "duration": 30,
+      "price": 25,
+      "category": "prueba-modulo7",
+      "available": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 201', () => pm.response.to.have.status(201));
+      pm.collectionVariables.set('sid', pm.response.json().payload._id);
+    language: text/javascript
+order: 1000

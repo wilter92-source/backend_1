@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/bookings/{{bid}}"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 200', () => pm.response.to.have.status(200));
+      pm.test('Referencia eliminada sin romper reserva', () => pm.expect(pm.response.json().payload.services[0].service).to.be.null);
+    language: text/javascript
+order: 14000

@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/bookings/{{bid}}/services/{{sid}}"
+method: POST
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 200', () => pm.response.to.have.status(200));
+      pm.test('Cantidad incrementada', () => pm.expect(pm.response.json().payload.services[0].quantity).to.eql(2));
+    language: text/javascript
+order: 6000
