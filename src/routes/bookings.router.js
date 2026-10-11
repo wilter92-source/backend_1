@@ -1,16 +1,15 @@
 import { Router } from 'express';
-import {
-  getBookings,
-  createBooking,
-  getBookingById,
-  addServiceToBooking
-} from '../controllers/bookings.controller.js';
-
+import * as controller from '../controllers/bookings.controller.js';
+import { validateRequest, bookingSchema, bookingIdSchema, bookingServiceIdsSchema, quantitySchema } from '../validation/schemas.js';
 const router = Router();
-
-router.get('/', getBookings);
-router.post('/', createBooking);
-router.get('/:bid', getBookingById);
-router.post('/:bid/services/:sid', addServiceToBooking);
-
+const bookingId = validateRequest(bookingIdSchema, 'params');
+const serviceIds = validateRequest(bookingServiceIdsSchema, 'params');
+router.get('/', controller.getBookings);
+router.post('/', validateRequest(bookingSchema), controller.createBooking);
+router.get('/:bid', controller.getBookingById);
+router.post('/:bid/services/:sid', serviceIds, controller.addServiceToBooking);
+router.put('/:bid/services/:sid', serviceIds, validateRequest(quantitySchema), controller.updateServiceQuantity);
+router.delete('/:bid/services/:sid', serviceIds, controller.removeServiceFromBooking);
+router.delete('/:bid/services', bookingId, controller.clearBooking);
+router.delete('/:bid', bookingId, controller.deleteBooking);
 export default router;

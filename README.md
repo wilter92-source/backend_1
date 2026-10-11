@@ -1,10 +1,10 @@
-# Backend de Turnos y Reservas — Módulo 7 · Pre-entrega 08
+# Sistema Backend de Turnos y Reservas — Entrega final
 
 API REST con MongoDB, arquitectura en capas, vistas Handlebars y actualizaciones en tiempo real con Socket.io. Las vistas consultan los mismos servicios de negocio que la API; los registros se leen de MongoDB, no de archivos JSON ni de datos fijos dentro de las plantillas.
 
 ## Inicio rápido
 
-Requisitos: Node.js 22.22.2 o superior (recomendado: Node.js 24), npm y MongoDB 6 o superior, local o Atlas.
+Requisitos: Node.js 22.22.2 o superior (recomendado: Node.js 24), npm y un cluster de MongoDB Atlas para la entrega. Las pruebas usan una base temporal independiente.
 
 1. Abrir una terminal en esta carpeta, donde está `package.json`.
 2. Ejecutar `npm ci`.
@@ -13,12 +13,12 @@ Requisitos: Node.js 22.22.2 o superior (recomendado: Node.js 24), npm y MongoDB 
 5. En otra terminal de esta misma carpeta, ejecutar `npm run seed` si quieres cargar el catálogo de ejemplo. Requiere el servidor activo: usa su API para validar, persistir y notificar a las vistas. No borra datos y omite los servicios ya existentes.
 6. Abrir `http://localhost:8080/views/services` y `http://localhost:8080/views/bookings`.
 
-`.env.example` usa un MongoDB local; no instala ni inicia MongoDB. Si eliges esa configuración, el servicio de MongoDB debe estar activo. El servidor conecta la base **antes** de escuchar peticiones. `npm run dev` inicia Node con reinicio automático al editar.
+`.env.example` contiene una URI de Atlas con marcadores: debes sustituir usuario, contraseña y host, crear un usuario de base de datos con permisos de lectura/escritura y autorizar la IP de tu equipo en Atlas. Si la contraseña contiene caracteres especiales, codificarlos para una URI. La contraseña es la del usuario de base de datos, no la de inicio de sesión de Atlas. El servidor conecta la base **antes** de escuchar peticiones. `npm run dev` inicia Node con reinicio automático al editar.
 
 ```env
 PORT=8080
 NODE_ENV=development
-MONGO_URI=mongodb://127.0.0.1:27017/turnos_reservas
+MONGO_URI=mongodb+srv://USUARIO:CONTRASENA@TU_CLUSTER.mongodb.net/turnos_reservas?retryWrites=true&w=majority
 ```
 
 Las reservas se crean mediante la API o la colección de Postman incluida. Una base sin reservas muestra un estado vacío válido, no registros inventados.
@@ -35,7 +35,7 @@ Handlebars genera el HTML inicial. `public/js/socket.js` escucha los eventos sig
 | Evento | Acción real que lo emite |
 | --- | --- |
 | `services:changed` | Crear, actualizar o eliminar un servicio desde la capa de negocio (API y seed) |
-| `bookings:changed` | Crear una reserva o agregar un servicio a una reserva |
+| `bookings:changed` | Crear, modificar cantidades, agregar o quitar servicios, vaciar o eliminar reservas |
 
 La capa de servicios publica un evento de dominio después de guardar el cambio correctamente. `src/config/socket.config.js` lo retransmite por Socket.io; los controllers no emiten eventos. Las llamadas directas a servicios de negocio también notifican. El seed utiliza la API del servidor activo para propagar sus inserciones entre procesos. Contiene `action` e `id`; el navegador vuelve a consultar la API con sus filtros actuales y reemplaza únicamente la lista. No se recarga la página. La vista de reservas escucha también los cambios de servicios para reflejar modificaciones del nombre o referencias eliminadas.
 
@@ -46,14 +46,14 @@ Las plantillas escapan los datos con `{{campo}}`. El cliente usa `textContent` y
 ## Demostración con Postman
 
 1. Iniciar el servidor y abrir las dos vistas en el navegador. También puedes abrir servicios en dos pestañas.
-2. Importar `postman/Modulo7.postman_collection.json` en Postman.
+2. Importar `postman/EntregaFinal.postman_collection.json` en Postman.
 3. Revisar la variable de colección `baseUrl`, por defecto `http://localhost:8080`.
 4. Ejecutar las peticiones en orden, manualmente o con Collection Runner. Las pruebas guardan automáticamente `sid`, `bid` y `mid`; no hace falta copiar IDs.
 5. En la petición 01 aparece el servicio en las pestañas abiertas; en la 03 cambia su disponibilidad sin F5.
 6. En la 04 aparece la reserva. La 05 comprueba que `populate` devuelve el nombre y el `_id` del servicio. La 06 verifica cantidad 2.
-7. La 13 elimina el servicio de prueba. La reserva queda visible como «Servicio eliminado»; la 14 comprueba la referencia nula.
+7. Las peticiones finales comprueban modificación de cantidad, eliminación de asociaciones, vaciado y eliminación de reservas. También verifican que una referencia a un servicio eliminado se muestra como «Servicio eliminado».
 
-La colección crea una reserva y un mensaje de demostración que se conservan. Ejecutarla en una base de desarrollo. No contiene credenciales. Su ejecución en Postman con MongoDB queda pendiente de verificación local; no se presenta como una ejecución ya realizada.
+La colección elimina al finalizar su servicio y su reserva de demostración; conserva el mensaje de prueba. Ejecutarla en una base de desarrollo. No contiene credenciales. Su ejecución en Postman con MongoDB queda pendiente de verificación local; no se presenta como una ejecución ya realizada.
 
 ## API REST
 
@@ -71,6 +71,10 @@ La respuesta mantiene `{ "status": "success", "payload": ... }`. Los listados ma
 | POST | `/api/bookings` | Crear reserva |
 | GET | `/api/bookings/:bid` | Consultar reserva con populate |
 | POST | `/api/bookings/:bid/services/:sid` | Agregar servicio o incrementar su cantidad |
+| PUT | `/api/bookings/:bid/services/:sid` | Establecer cantidad con `{ "quantity": 3 }` |
+| DELETE | `/api/bookings/:bid/services/:sid` | Quitar un servicio de la reserva |
+| DELETE | `/api/bookings/:bid/services` | Vaciar servicios conservando la reserva |
+| DELETE | `/api/bookings/:bid` | Eliminar la reserva |
 | GET | `/api/messages` | Listar mensajes |
 | POST | `/api/messages` | Crear mensaje |
 | GET | `/api/messages/:mid` | Consultar mensaje |
@@ -94,9 +98,9 @@ Todos los IDs son `_id` de MongoDB (24 caracteres hexadecimales). No usar IDs nu
 }
 ```
 
-Los esquemas Zod están en `src/validation/schemas.js` y se ejecutan desde la capa de servicios antes de consultar MongoDB. Cubren crear y actualizar servicios, crear reservas y los parámetros de agregar un servicio a una reserva. Los errores devuelven 400 e indican el campo problemático.
+Los esquemas Zod están en `src/validation/schemas.js` y se ejecutan mediante middleware en las rutas de escritura, antes del controller. La capa de servicios también los aplica para proteger llamadas directas. Cubren crear y actualizar servicios, crear reservas, cantidades e IDs de las operaciones sobre reservas. Los errores devuelven 400 e indican el campo problemático.
 
-Los seis campos son obligatorios en POST. Nombre, descripción y categoría deben ser textos no vacíos; duración debe ser positiva; precio, no negativo; disponibilidad, booleano. PUT acepta una selección de estos campos. Los campos desconocidos y `_id` no se actualizan.
+Los seis campos son obligatorios en POST. Nombre, descripción y categoría deben ser textos no vacíos; duración debe ser positiva; precio, no negativo; disponibilidad, booleano. PUT acepta una selección de estos campos y rechaza actualizaciones vacías o sin campos editables. Los campos desconocidos y `_id` no se actualizan.
 
 ### Crear reserva
 
@@ -121,7 +125,11 @@ Agregar un servicio a una reserva usa una actualización atómica de MongoDB par
 
 Consultar `GET /api/bookings/:bid` con el ID devuelto al crear la reserva. Dentro de `payload.services`, cada `service` será un objeto con `_id`, `name`, `description`, `duration`, `price`, `category` y `available`, junto con `quantity`. En MongoDB permanece solamente la referencia ObjectId; populate se aplica al leer, no al guardar.
 
-Este módulo registra reservas y la disponibilidad general del servicio. No implementa un calendario de cupos ni impide solapamientos horarios; no se presenta como un motor de asignación de turnos completos.
+`PUT /api/bookings/:bid/services/:sid` recibe `{ "quantity": 3 }` y reemplaza la cantidad; no la incrementa. Solo acepta enteros positivos seguros (hasta 9007199254740991). Agregar un servicio existente incrementa su cantidad en uno, con protección contra desbordamiento. Si la reserva o la asociación no existen, modificar o quitar devuelve 404; IDs mal formados devuelven 400. Quitar una asociación no elimina el servicio del catálogo.
+
+`DELETE /api/bookings/:bid/services` vacía el array y conserva cliente, fecha y estado. Se puede repetir sobre una reserva vacía. `DELETE /api/bookings/:bid` elimina únicamente esa reserva. Las operaciones notifican a Socket.io después de persistir; ninguna modificación inválida emite un evento.
+
+Este sistema registra reservas y la disponibilidad general del servicio. No implementa un calendario de cupos ni impide solapamientos horarios; no se presenta como un motor de asignación de turnos completos.
 
 ### Crear mensaje
 
@@ -177,8 +185,8 @@ Una página fuera de rango devuelve un array vacío, conserva la página solicit
 
 - `src/routes/`: rutas de datos y de vistas, separadas.
 - `src/controllers/`: entrada y salida HTTP y renderizado; sin emisión de eventos.
-- `src/services/`: invocación de esquemas Zod, reglas de negocio, eventos posteriores a persistencia y preparación de consultas permitidas.
-- `src/validation/`: esquemas Zod y traducción de errores a respuestas 400.
+- `src/services/`: validación defensiva con Zod, reglas de negocio, eventos posteriores a persistencia y preparación de consultas permitidas.
+- `src/validation/`: esquemas Zod, middleware HTTP y traducción de errores a respuestas 400.
 - `src/events/`: eventos de dominio independientes de HTTP.
 - `src/repositories/`: acceso a la persistencia mediante DAOs.
 - `src/dao/`: consultas MongoDB, populate y actualización atómica.
@@ -200,9 +208,9 @@ npm test
 
 `test:smoke` no necesita MongoDB: comprueba validación, renderizado y escapado Handlebars, rutas básicas, transporte Socket.io real y actualización DOM en JSDOM. La respuesta HTTP de datos del cliente se sustituye únicamente en esa prueba; no demuestra persistencia.
 
-`test:integration` inicia **un proceso MongoDB real temporal** con `mongodb-memory-server`, conecta Mongoose antes de levantar HTTP y utiliza una base aleatoria `modulo7_test_<uuid>`. Al finalizar elimina solo esa base y cierra las conexiones. No usa `.env`, la base del proyecto ni archivos JSON. La primera ejecución puede descargar el binario de MongoDB y requiere acceso a Internet; el sistema debe permitir ejecutar `mongod`.
+`test:integration` inicia **un proceso MongoDB real temporal** con `mongodb-memory-server`, conecta Mongoose antes de levantar HTTP y utiliza una base aleatoria `turnos_test_<uuid>`. Al finalizar elimina solo esa base y cierra las conexiones. No usa `.env`, la base del proyecto ni archivos JSON. La primera ejecución puede descargar el binario de MongoDB y requiere acceso a Internet; el sistema debe permitir ejecutar `mongod`.
 
-La integración comprueba CRUD, validaciones, filtros, orden y paginación, ObjectIds, populate, mensajes, cantidades concurrentes, SSR, archivos estáticos, dos clientes, cambios del DOM, escapado XSS y reconexión. También desconecta y reconecta Mongoose para comprobar persistencia.
+La integración comprueba CRUD, validaciones, filtros, orden y paginación, ObjectIds, populate, mensajes, cantidades concurrentes, SSR, archivos estáticos, dos clientes, cambios del DOM, escapado XSS y reconexión. También comprueba modificación de cantidades, límites numéricos, eliminación de asociaciones, vaciado, eliminación de reservas y sus actualizaciones del DOM. Inspecciona el documento crudo para verificar ObjectId, y desconecta y reconecta Mongoose para comprobar persistencia.
 
 Si ya tienes un MongoDB de pruebas, puedes evitar la descarga del binario:
 
@@ -221,12 +229,6 @@ MONGO_TEST_URI=mongodb://127.0.0.1:27017 npm run test:integration
 ```
 
 La suite sigue seleccionando su propia base aleatoria; el usuario de MongoDB necesita permiso para crear y eliminar esa base. No usar credenciales de producción.
-
-### Verificación de esta versión
-
-Se ejecutó una instalación limpia con `npm install` seguida de `npm test`, incluyendo MongoDB temporal real, JSDOM y socket.io-client. El resultado y la correspondencia con la rúbrica están en `docs/REVISION_MODULO_7.md`.
-
-La suite cubre además metadatos, `sortBy`, eventos desde llamadas directas a negocio, seed ejecutado en otro proceso, ausencia de duplicados y reconexión del cliente. La colección Postman se entrega para demostración manual; no se afirma haberla ejecutado desde la aplicación Postman.
 
 ## Entrega
 

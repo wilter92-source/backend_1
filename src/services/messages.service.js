@@ -1,5 +1,5 @@
 import { ValidationError } from '../utils/errors.js';
-import mongoose from 'mongoose';
+import { objectId } from '../validation/schemas.js';
 import * as repository from '../repositories/messages.repository.js';
 import { listOptions, textFilter } from './query.service.js';
 export function createMessage(data) {
@@ -13,4 +13,4 @@ export function getMessages(query = {}) {
   const filter = query.user === undefined ? {} : { user: textFilter(query.user, 'user') };
   return repository.getAll(filter, listOptions(query, ['user']));
 }
-export const getMessageById = id => mongoose.isObjectIdOrHexString(id) ? repository.getById(id) : null;
+export const getMessageById = id => objectId.safeParse(id).success ? repository.getById(id) : null;

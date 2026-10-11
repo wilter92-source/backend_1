@@ -1,11 +1,11 @@
-import { bookingSchema, addServiceSchema, validate } from '../validation/schemas.js';
+import { bookingSchema, addServiceSchema, bookingIdSchema, bookingServiceIdsSchema, quantitySchema, validate } from '../validation/schemas.js';
 import { changed } from '../events/domain.events.js';
 import { ValidationError } from '../utils/errors.js';
-import mongoose from 'mongoose';
+import { objectId } from '../validation/schemas.js';
 import * as bookingsRepository from '../repositories/bookings.repository.js';
 import * as servicesRepository from '../repositories/services.repository.js';
 import { listOptions, textFilter } from './query.service.js';
-const validId = id => typeof id === 'string' && mongoose.isObjectIdOrHexString(id);
+const validId = id => objectId.safeParse(id).success;
 const states = ['pending', 'confirmed', 'cancelled'];
 function validDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
@@ -43,5 +43,25 @@ export const getBookingById = id => validId(id) ? bookingsRepository.getById(id)
 export async function addServiceToBooking(bookingId, serviceId) {
   validate(addServiceSchema, { bookingId, serviceId });
   if (!await servicesRepository.getById(serviceId)) return null;
-  return changed('bookings', 'updated', await bookingsRepository.addService(bookingId, serviceId));
+  const updated = await bookingsRepository.addService(bookingId, serviceId);
+  if (!updated && await bookingsRepository.getById(bookingId)) throw new ValidationError('Cantidad fuera de rango.');
+  return changed('bookings', 'updated', updated);
+}
+
+export async function updateServiceQuantity(bid, sid, data) {
+  validate(bookingServiceIdsSchema, { bid, sid });
+  const { quantity } = validate(quantitySchema, data);
+  return changed('bookings', 'updated', await bookingsRepository.updateQuantity(bid, sid, quantity));
+}
+export async function removeServiceFromBooking(bid, sid) {
+  validate(bookingServiceIdsSchema, { bid, sid });
+  return changed('bookings', 'updated', await bookingsRepository.removeService(bid, sid));
+}
+export async function clearBooking(bid) {
+  validate(bookingIdSchema, { bid });
+  return changed('bookings', 'updated', await bookingsRepository.clear(bid));
+}
+export async function deleteBooking(bid) {
+  validate(bookingIdSchema, { bid });
+  return changed('bookings', 'deleted', await bookingsRepository.deleteBooking(bid));
 }

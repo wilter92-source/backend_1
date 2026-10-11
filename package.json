@@ -1,7 +1,7 @@
 {
   "name": "backend-turnos-reservas-mongodb",
-  "version": "1.1.0",
-  "description": "Pre-entrega 7: API REST, MongoDB, Handlebars y Socket.io con arquitectura en capas.",
+  "version": "2.0.0",
+  "description": "Sistema de turnos y reservas: API REST, MongoDB Atlas, Zod, Handlebars y Socket.io con arquitectura en capas.",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

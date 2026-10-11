@@ -7,12 +7,13 @@ import {
   deleteService
 } from '../controllers/services.controller.js';
 
+import { validateRequest, serviceSchema, updateServiceSchema } from '../validation/schemas.js';
 const router = Router();
 
 router.get('/', getServices);
 router.get('/:sid', getServiceById);
-router.post('/', createService);
-router.put('/:sid', updateService);
+router.post('/', validateRequest(serviceSchema), createService);
+router.put('/:sid', validateRequest(updateServiceSchema), updateService);
 router.delete('/:sid', deleteService);
 
 export default router;

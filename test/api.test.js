@@ -26,7 +26,7 @@ test('Integración con MongoDB real aislado, API, vistas y Socket.io', { timeout
   let mongo, server, io;
   const clients = [];
   const doms = [];
-  const dbName = `modulo7_test_${randomUUID().replaceAll('-', '')}`;
+  const dbName = `turnos_test_${randomUUID().replaceAll('-', '')}`;
   try {
     const uri = process.env.MONGO_TEST_URI || (mongo = await MongoMemoryServer.create()).getUri();
     await mongoose.connect(uri, { dbName, serverSelectionTimeoutMS: 10000 });
@@ -112,6 +112,55 @@ test('Integración con MongoDB real aislado, API, vistas y Socket.io', { timeout
       await request('GET', '/api/bookings?date=bad', undefined, 400);
       await request('POST', `/api/bookings/${bid}/services/1`, undefined, 400);
     });
+    await t.test('entrega final: cantidades, quitar, vaciar, eliminar y eventos tras persistir', async () => {
+      const created = await request('POST', '/api/bookings', { ...booking, services: [{ service: sid, quantity: 1 }] }, 201);
+      const id = created._id;
+      const raw = await BookingModel.collection.findOne({ _id: new mongoose.Types.ObjectId(id) });
+      assert.ok(raw.services[0].service instanceof mongoose.Types.ObjectId);
+      assert.equal(raw.services[0].service.toHexString(), sid);
+      assert.equal(raw.services[0].quantity, 1);
+      assert.equal(raw.services[0].name, undefined);
+      const client = connect(base, { transports: ['websocket'] }); clients.push(client);
+      await once(client, 'connect');
+      const events = []; client.on('bookings:changed', event => events.push(event));
+      const path = `/api/bookings/${id}/services/${sid}`;
+      for (const body of [{}, { quantity: 0 }, { quantity: -1 }, { quantity: 1.5 }, { quantity: '2' }, { quantity: Number.MAX_SAFE_INTEGER + 1 }]) {
+        await request('PUT', path, body, 400);
+      }
+      assert.equal((await request('GET', `/api/bookings/${id}`)).services[0].quantity, 1);
+      assert.equal(events.length, 0);
+      let result = await request('PUT', path, { quantity: 4 });
+      assert.equal(result.services[0].quantity, 4);
+      assert.equal(result.services[0].service.name, 'Consulta');
+      await waitFor(() => events.length === 1);
+      assert.deepEqual(events[0], { action: 'updated', id });
+      const missing = new mongoose.Types.ObjectId().toHexString();
+      await request('PUT', `/api/bookings/${id}/services/${missing}`, { quantity: 2 }, 404);
+      await request('DELETE', `/api/bookings/${id}/services/${missing}`, undefined, 404);
+      await request('PUT', path, { quantity: Number.MAX_SAFE_INTEGER });
+      await request('POST', path, undefined, 400);
+      assert.equal((await request('GET', `/api/bookings/${id}`)).services[0].quantity, Number.MAX_SAFE_INTEGER);
+      result = await request('DELETE', path);
+      assert.deepEqual(result.services, []);
+      await request('DELETE', path, undefined, 404);
+      await request('POST', path);
+      result = await request('DELETE', `/api/bookings/${id}/services`);
+      assert.deepEqual(result.services, []);
+      assert.equal(result.clientName, booking.clientName);
+      assert.ok(await BookingModel.findById(id));
+      await request('DELETE', `/api/bookings/${id}/services`); // Vaciar es idempotente.
+      await request('DELETE', `/api/bookings/${id}`);
+      await waitFor(() => events.some(event => event.action === 'deleted' && event.id === id));
+      assert.equal(await BookingModel.findById(id), null);
+      assert.ok(await ServiceModel.findById(sid));
+      await request('GET', `/api/bookings/${id}`, undefined, 404);
+      await request('DELETE', `/api/bookings/${id}`, undefined, 404);
+      await request('DELETE', `/api/bookings/${missing}/services`, undefined, 404);
+      await request('DELETE', '/api/bookings/invalid', undefined, 400);
+      await request('DELETE', `/api/bookings/${bid}/services/invalid`, undefined, 400);
+      await request('PUT', `/api/services/${sid}`, {}, 400);
+      client.close();
+    });
     await t.test('messages recorre todas las capas y persiste', async () => {
       const message = await request('POST', '/api/messages', { user: 'Ana', message: 'Consulta de prueba' }, 201);
       assert.equal((await request('GET', `/api/messages/${message._id}`)).message, 'Consulta de prueba');
@@ -160,6 +209,14 @@ test('Integración con MongoDB real aislado, API, vistas y Socket.io', { timeout
       const other = (await request('GET', '/api/bookings')).find(x => x.clientName === 'Cliente realtime');
       await request('POST', `/api/bookings/${other._id}/services/${sid}`);
       await waitFor(() => c.list.textContent.includes('Consulta'));
+      await request('PUT', `/api/bookings/${other._id}/services/${sid}`, { quantity: 7 });
+      await waitFor(() => c.list.textContent.includes('Cantidad: 7'));
+      await request('DELETE', `/api/bookings/${other._id}/services/${created._id}`);
+      await waitFor(() => !c.list.textContent.includes('Servicio eliminado'));
+      await request('DELETE', `/api/bookings/${other._id}/services`);
+      await waitFor(() => c.list.textContent.includes('Sin servicios asociados.'));
+      await request('DELETE', `/api/bookings/${other._id}`);
+      await waitFor(() => !c.list.textContent.includes('Cliente realtime'));
       b.socket.disconnect();
       await request('POST', '/api/services', { ...service, name: 'Durante desconexión' }, 201);
       b.socket.connect();

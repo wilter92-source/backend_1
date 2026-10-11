@@ -3,3 +3,8 @@ export const create = data => dao.create(data);
 export const getAll = (filter, options) => dao.getAll(filter, options);
 export const getById = id => dao.getById(id);
 export const addService = (id, sid) => dao.addService(id, sid);
+
+export const updateQuantity = (id, sid, quantity) => dao.updateQuantity(id, sid, quantity);
+export const removeService = (id, sid) => dao.removeService(id, sid);
+export const clear = id => dao.clear(id);
+export const deleteBooking = id => dao.delete(id);

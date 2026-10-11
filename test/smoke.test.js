@@ -67,3 +67,30 @@ test('Socket.io real + script del navegador: DOM, reconexión y ausencia de dupl
     socket?.close(); dom?.window.close(); await new Promise(resolve => io.close(resolve));
   }
 });
+
+test('rutas de entrega final rechazan entradas inválidas antes de MongoDB', async () => {
+  const { server, io } = createHttpServer(app);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const id = '507f1f77bcf86cd799439011';
+  try {
+    for (const [method, path, body] of [
+      ['PUT', `/api/bookings/${id}/services/${id}`, { quantity: 0 }],
+      ['PUT', `/api/bookings/${id}/services/${id}`, { quantity: 1.5 }],
+      ['PUT', `/api/bookings/${id}/services/${id}`, { quantity: '3' }],
+      ['PUT', `/api/bookings/${id}/services/${id}`, {}],
+      ['PUT', `/api/bookings/${id}/services/${id}`, { quantity: Number.MAX_SAFE_INTEGER + 1 }],
+      ['PUT', `/api/bookings/invalid/services/${id}`, { quantity: 2 }],
+      ['DELETE', `/api/bookings/${id}/services/invalid`],
+      ['DELETE', '/api/bookings/invalid/services'],
+      ['DELETE', '/api/bookings/invalid'],
+      ['PUT', `/api/services/${id}`, {}],
+      ['PUT', `/api/services/${id}`, { unknown: 'value' }]
+    ]) {
+      const response = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+      assert.equal(response.status, 400, `${method} ${path}`);
+      assert.equal((await response.json()).status, 'error');
+    }
+  } finally { await new Promise(resolve => io.close(resolve)); }
+});

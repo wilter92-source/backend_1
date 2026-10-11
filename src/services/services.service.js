@@ -2,10 +2,10 @@ import { ValidationError } from '../utils/errors.js';
 import { listOptions, textFilter } from './query.service.js';
 import * as repository from '../repositories/services.repository.js';
 
-import mongoose from 'mongoose';
+import { objectId } from '../validation/schemas.js';
 import { serviceSchema, updateServiceSchema, validate } from '../validation/schemas.js';
 import { changed } from '../events/domain.events.js';
-const validId = id => mongoose.isObjectIdOrHexString(id);
+const validId = id => objectId.safeParse(id).success;
 
 function serviceQuery(query = {}) {
   const filter = {};

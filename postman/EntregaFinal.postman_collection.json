@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Módulo 7 — Turnos y reservas",
+    "name": "Entrega final — Turnos y reservas",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Ejecutar en orden en una base de desarrollo. Crea una reserva y un mensaje de prueba que se conservan; elimina el servicio creado al final."
+    "description": "Ejecutar en orden en una base de desarrollo. Verifica CRUD, filtros, Zod, populate, cantidades, vaciado y eliminación. Elimina su reserva y servicio; conserva el mensaje de prueba."
   },
   "variable": [
     {
@@ -36,7 +36,7 @@
         "url": "{{baseUrl}}/api/services",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Servicio prueba módulo 7\",\n  \"description\": \"Creado desde Postman\",\n  \"duration\": 30,\n  \"price\": 25,\n  \"category\": \"prueba-modulo7\",\n  \"available\": true\n}",
+          "raw": "{\n  \"name\": \"Servicio prueba final\",\n  \"description\": \"Creado desde Postman\",\n  \"duration\": 30,\n  \"price\": 25,\n  \"category\": \"prueba-final\",\n  \"available\": true\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -67,7 +67,7 @@
             "value": "application/json"
           }
         ],
-        "url": "{{baseUrl}}/api/services?category=prueba-modulo7&available=true&sortBy=price&order=asc&page=1&limit=10"
+        "url": "{{baseUrl}}/api/services?category=prueba-final&available=true&sortBy=price&order=asc&page=1&limit=10"
       },
       "event": [
         {
@@ -171,7 +171,7 @@
             "exec": [
               "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
               "const service = pm.response.json().payload.services[0].service;",
-              "pm.test('Referencia poblada', () => { pm.expect(service._id).to.eql(pm.collectionVariables.get('sid')); pm.expect(service.name).to.eql('Servicio prueba módulo 7'); });"
+              "pm.test('Referencia poblada', () => { pm.expect(service._id).to.eql(pm.collectionVariables.get('sid')); pm.expect(service.name).to.eql('Servicio prueba final'); });"
             ]
           }
         }
@@ -368,7 +368,172 @@
       ]
     },
     {
-      "name": "13 Eliminar servicio de prueba",
+      "name": "13 Modificar cantidad",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}/services/{{sid}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"quantity\": 4}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Cantidad 4', () => pm.expect(pm.response.json().payload.services[0].quantity).to.eql(4));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Rechazar cantidad cero",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}/services/{{sid}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"quantity\": 0}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 Quitar servicio de la reserva",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}/services/{{sid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Sin asociaciones', () => pm.expect(pm.response.json().payload.services).to.eql([]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Volver a asociar servicio",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}/services/{{sid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Vaciar reserva",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}/services"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Reserva vacía', () => pm.expect(pm.response.json().payload.services).to.eql([]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Asociar para demostrar referencia eliminada",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}/services/{{sid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Eliminar servicio de prueba",
       "request": {
         "method": "DELETE",
         "header": [
@@ -392,7 +557,7 @@
       ]
     },
     {
-      "name": "14 La reserva conserva el registro tras eliminar servicio",
+      "name": "20 La reserva conserva el registro tras eliminar servicio",
       "request": {
         "method": "GET",
         "header": [
@@ -411,6 +576,54 @@
             "exec": [
               "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
               "pm.test('Referencia eliminada sin romper reserva', () => pm.expect(pm.response.json().payload.services[0].service).to.be.null);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Eliminar reserva de prueba",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Confirmar reserva eliminada",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/bookings/{{bid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
             ]
           }
         }

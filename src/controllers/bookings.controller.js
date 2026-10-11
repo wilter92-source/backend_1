@@ -45,3 +45,25 @@ export const getBookings = async (req, res) => {
   try { res.json({ status: 'success', payload: await bookingService.getBookings(req.query) }); }
   catch (error) { respondError(res, error); }
 };
+
+// Express 5 deriva los rechazos al middleware centralizado de errores.
+export async function updateServiceQuantity(req, res) {
+  const booking = await bookingService.updateServiceQuantity(req.params.bid, req.params.sid, req.body);
+  if (!booking) return res.status(404).json({ status: 'error', message: 'Reserva o servicio asociado no encontrado' });
+  res.json({ status: 'success', payload: booking });
+}
+export async function removeServiceFromBooking(req, res) {
+  const booking = await bookingService.removeServiceFromBooking(req.params.bid, req.params.sid);
+  if (!booking) return res.status(404).json({ status: 'error', message: 'Reserva o servicio asociado no encontrado' });
+  res.json({ status: 'success', payload: booking });
+}
+export async function clearBooking(req, res) {
+  const booking = await bookingService.clearBooking(req.params.bid);
+  if (!booking) return res.status(404).json({ status: 'error', message: 'Reserva no encontrada' });
+  res.json({ status: 'success', payload: booking });
+}
+export async function deleteBooking(req, res) {
+  const booking = await bookingService.deleteBooking(req.params.bid);
+  if (!booking) return res.status(404).json({ status: 'error', message: 'Reserva no encontrada' });
+  res.json({ status: 'success', payload: booking });
+}
