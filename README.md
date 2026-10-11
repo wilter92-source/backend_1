@@ -13,12 +13,12 @@ Requisitos: Node.js 22.22.2 o superior (recomendado: Node.js 24), npm y un clust
 5. En otra terminal de esta misma carpeta, ejecutar `npm run seed` si quieres cargar el catálogo de ejemplo. Requiere el servidor activo: usa su API para validar, persistir y notificar a las vistas. No borra datos y omite los servicios ya existentes.
 6. Abrir `http://localhost:8080/views/services` y `http://localhost:8080/views/bookings`.
 
-`.env.example` contiene una URI de Atlas con marcadores: debes sustituir usuario, contraseña y host, crear un usuario de base de datos con permisos de lectura/escritura y autorizar la IP de tu equipo en Atlas. Si la contraseña contiene caracteres especiales, codificarlos para una URI. La contraseña es la del usuario de base de datos, no la de inicio de sesión de Atlas. El servidor conecta la base **antes** de escuchar peticiones. `npm run dev` inicia Node con reinicio automático al editar.
+`.env.example` deja `MONGO_URI` vacío intencionalmente. Copia el archivo como `.env` y completa allí la cadena de conexión de tu cuenta de Atlas, indicando la base `turnos_reservas`. Crea un usuario de base de datos con permisos de lectura/escritura y autoriza la IP de tu equipo en Atlas. No escribas la conexión real en el README ni en `.env.example`. Si la contraseña contiene caracteres especiales, codificarlos para una URI. La contraseña es la del usuario de base de datos, no la de inicio de sesión de Atlas. El servidor conecta la base **antes** de escuchar peticiones. `npm run dev` inicia Node con reinicio automático al editar.
 
 ```env
 PORT=8080
 NODE_ENV=development
-MONGO_URI=mongodb+srv://USUARIO:CONTRASENA@TU_CLUSTER.mongodb.net/turnos_reservas?retryWrites=true&w=majority
+MONGO_URI=
 ```
 
 Las reservas se crean mediante la API o la colección de Postman incluida. Una base sin reservas muestra un estado vacío válido, no registros inventados.
